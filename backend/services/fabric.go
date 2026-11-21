@@ -2,25 +2,18 @@ package services
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/channel"
-	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/context"
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 )
 
-var (
-	sdk       *fabsdk.FabricSDK
-	channelCtx context.Channel
-)
+var sdk *fabsdk.FabricSDK
 
 const (
 	channelName   = "mychannel"
 	chaincodeName = "education"
-	orgName      = "Org1"
-	userName     = "User1"
-	configPath   = "config/connection-profile.yaml"
+	configPath    = "config/connection-profile.yaml"
 )
 
 type FabricService struct {
@@ -37,15 +30,17 @@ func InitSDK() error {
 	return nil
 }
 
+// GetClient 用「组织 + 用户」构造一个 channel 客户端。
+// fabric-sdk-go 的用法是先 sdk.ChannelContext 拿到上下文，再交给 channel.New。
 func GetClient(org, user string) (*channel.Client, error) {
-	clientChannelContext := fabsdk.ChannelUserContext{
-		OrgID:        org,
-		ChannelID:    channelName,
-		User:         user,
-		CryptoPath:   os.Getenv("CRYPTO_PATH"),
-		ConfigPath:   configPath,
+	if sdk == nil {
+		return nil, fmt.Errorf("SDK 未初始化，请先调用 InitSDK")
 	}
-	client, err := channel.New(sdk.ChannelContext(clientChannelContext))
+	ctx := sdk.ChannelContext(channelName,
+		fabsdk.WithOrg(org),
+		fabsdk.WithUser(user),
+	)
+	client, err := channel.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create channel client: %v", err)
 	}

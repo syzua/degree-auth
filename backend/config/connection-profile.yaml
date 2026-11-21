@@ -1,0 +1,86 @@
+# Hyperledger Fabric 连接配置（模板）
+#
+# 使用前提：
+#   1. 在 network/ 目录下生成证书：cryptogen generate --config=crypto-config.yaml
+#   2. docker-compose up -d 起 orderer / peer0 / peer1 / couchdb / ca
+#   3. 本文件由 backend/config 挂载进容器（见 network/docker-compose.yml 的 backend 服务）
+#
+# 下面所有路径都是「容器内」路径；宿主机运行后端时，把 /etc/hyperledger/cred
+# 改成 ../network/crypto-config 即可。
+
+name: "degree-auth-network"
+version: "1.0"
+
+client:
+  organization: Org1
+  credentialStore:
+    path: /tmp/fabric-client-kvs
+    cryptoStore:
+      path: /tmp/fabric-client-kvs
+  connection:
+    timeout:
+      peer:
+        endorser: 120
+        eventHub: 120
+        eventReg: 120
+      orderer: 120
+
+organizations:
+  Org1:
+    mspid: Org1MSP
+    cryptoPath: /etc/hyperledger/cred/peerOrganizations/org1.example.com
+    peers:
+      - peer0.org1.example.com
+      - peer1.org1.example.com
+    certificateAuthorities:
+      - ca.org1.example.com
+
+orderers:
+  orderer.example.com:
+    url: grpcs://orderer.example.com:7050
+    tlsCACerts:
+      path: /etc/hyperledger/cred/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+
+peers:
+  peer0.org1.example.com:
+    url: grpcs://peer0.org1.example.com:7051
+    tlsCACerts:
+      path: /etc/hyperledger/cred/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    grpcOptions:
+      ssl-target-name-override: peer0.org1.example.com
+      hostnameOverride: peer0.org1.example.com
+  peer1.org1.example.com:
+    url: grpcs://peer1.org1.example.com:8051
+    tlsCACerts:
+      path: /etc/hyperledger/cred/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls/ca.crt
+    grpcOptions:
+      ssl-target-name-override: peer1.org1.example.com
+      hostnameOverride: peer1.org1.example.com
+
+certificateAuthorities:
+  ca.org1.example.com:
+    url: http://ca.org1.example.com:7054
+    caName: ca.org1.example.com
+    tlsCACerts:
+      path: /etc/hyperledger/cred/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem
+    registrar:
+      enrollId: admin
+      enrollSecret: adminpw
+    httpOptions:
+      verify: false
+
+channels:
+  mychannel:
+    orderers:
+      - orderer.example.com
+    peers:
+      peer0.org1.example.com:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+      peer1.org1.example.com:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: false
